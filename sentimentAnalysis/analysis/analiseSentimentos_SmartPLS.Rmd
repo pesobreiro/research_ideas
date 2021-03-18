@@ -1,0 +1,557 @@
+---
+title: "Analise Sentimentos"
+author: "Pedro Sobreiro"
+date: "02/01/2021"
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+Adaptado de
+<https://sillasgonzaga.github.io/2017-09-23-sensacionalista-pt01/>
+Library: Gonzaga, S. T. (2020). Sillasgonzaga/lexiconPT [R].
+<https://github.com/sillasgonzaga/lexiconPT> (Original work published
+2017)
+
+Carvalho, P., & Silva, M. J. (2015). SentiLex-PT: Principais
+características e potencialidades. Oslo Studies in Language, 7(1),
+Article 1. <https://doi.org/10.5617/osla.1444> SentiLex:
+<http://b2find.eudat.eu/dataset/b6bd16c2-a8ab-598f-be41-1e7aeecd60d3>
+
+As mais importantes para análise sentimento são: - Qual é impacto do
+ensino à distância nas instituições de ensino superior? - Qual é impacto
+do ensino à distância nas atividades de docência dos professores?
+
+Os dados estão a ser exportados para o SMARTPLS: Wong, K. (2013).
+Partial least square structural equation modeling (PLS-SEM) techniques
+using SmartPLS. Marketing Bulletin, 24, 1--32.
+
+Estava a seguir este tutorial
+
+Mais exemplos como trabalhar SMARTPLS: -
+<https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0234711>
+
+Hou, H.-Y., Lo, Y.-L., & Lee, C.-F. (2020). Predicting Network Behavior
+Model of E-Learning Partner Program in PLS-SEM. Applied Sciences,
+10(13), 4656. <https://doi.org/10.3390/app10134656>
+
+Rizun, M., & Strzelecki, A. (2020). Students' Acceptance of the COVID-19
+Impact on Shifting Higher Education to Distance Learning in Poland.
+International Journal of Environmental Research and Public Health,
+17(18), 6468. <https://doi.org/10.3390/ijerph17186468>
+
+Wong, K. (2013). Partial least square structural equation modeling
+(PLS-SEM) techniques using SmartPLS. Marketing Bulletin, 24, 1--32.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Libraries
+
+```{r}
+library(dplyr)
+library(readxl)
+
+```
+
+# Vamos ler os dados
+
+```{r}
+df <- read_excel("../dados/SEM_Questionarios_Docentes_final.xlsx")
+
+str(df)
+```
+
+# Vamos usar o package lexiconPT
+
+Install with: - devtools::install_github("sillasgonzaga/lexiconPT") - or
+install.package('lexiconPT')
+
+<https://github.com/sillasgonzaga/lexiconPT>
+
+```{r}
+library(lexiconPT)
+
+#carregar os datasets
+data("oplexicon_v3.0")
+data("sentiLex_lem_PT02")
+
+get_word_sentiment("adaptação")
+```
+
+```{r}
+print(paste("colunas:",ncol(oplexicon_v3.0), "linhas:", nrow(oplexicon_v3.0)))
+```
+
+```{r}
+op30 <- oplexicon_v3.0
+sent <- sentiLex_lem_PT02
+
+str(sent)
+str(op30)
+```
+
+# Atividades docentes
+
+```{r}
+df['EnsinoOnline_Atividades_docentes']
+```
+
+```{r}
+library(dplyr)
+df_comments <- data.table::copy(df['EnsinoOnline_Atividades_docentes'])
+#df_comments <- df_comments %>% mutate('EnsinoOnline_Atividades_docentes' = row_number()) não percebo às vezes não cria...
+df_comments$id = as.numeric(row.names(df)) #criar uma coluna com o id das colunas
+str(df_comments)
+```
+
+```{r}
+names(df_comments) = c('impacto','comment_id')
+head(df_comments)
+```
+
+```{r}
+library(tidytext)
+df_comments_unnested <- df_comments %>% unnest_tokens(term, impacto)
+str(df_comments_unnested)
+```
+
+## Vamos classificar
+
+```{r}
+
+df_comments_unnested %>% 
+  left_join(op30, by = "term") %>% 
+  left_join(sent %>% select(term, lex_polarity = polarity), by = "term") %>% 
+  select(comment_id, term, polarity, lex_polarity) %>% 
+  summarise(
+    comment_sentiment_op = sum(polarity),
+    comment_sentiment_lex = sum(lex_polarity),
+    n_words = n()
+    ) %>% 
+  ungroup() %>% 
+  rowwise() %>% 
+  mutate(
+    most_neg = min(comment_sentiment_lex, comment_sentiment_op),
+    most_pos = max(comment_sentiment_lex, comment_sentiment_op)
+  )
+
+df_comments_unnested
+
+```
+
+## manter apenas as palavras com polaridade
+
+tanto no OpLexicon como no SentiLex
+
+```{r}
+df_comments_unnested2 <- df_comments_unnested %>% 
+  inner_join(op30, by = "term") %>% 
+  inner_join(sent %>% select(term, lex_polarity = polarity), by = "term") %>% 
+  group_by(comment_id) %>% 
+  summarise(
+    comment_sentiment_op = sum(polarity),
+    comment_sentiment_lex = sum(lex_polarity),
+    n_words = n()
+    ) %>% 
+  ungroup() %>% 
+  rowwise() %>% 
+  mutate(
+    most_neg = min(comment_sentiment_lex, comment_sentiment_op),
+    most_pos = max(comment_sentiment_lex, comment_sentiment_op)
+  )
+
+head(df_comments_unnested2)
+```
+
+```{r}
+library(ggplot2)
+p <- df_comments_unnested2 %>% 
+  ggplot(aes(x = comment_sentiment_op, y = comment_sentiment_lex)) +
+    geom_point(aes(color = n_words)) + 
+    scale_color_continuous(low = "green", high = "red") +
+    labs(x = "Polaridade no OpLexicon", y = "Polaridade no SentiLex") +
+    #geom_smooth(method = "lm") +
+    geom_vline(xintercept = 0, linetype = "dashed") +
+    geom_hline(yintercept = 0, linetype = "dashed")
+
+p
+```
+
+corrigir isto so para sentilex
+
+```{r}
+df_comments_unnested2 <- df_comments_unnested %>% 
+  inner_join(sent %>% select(term, lex_polarity = polarity), by = "term") %>% 
+  group_by(comment_id) %>% 
+  summarise(
+    comment_sentiment_lex = sum(lex_polarity),
+    n_words = n()
+    )
+
+print(nrow(df_comments_unnested2))
+head(df_comments_unnested2)
+```
+
+```{r}
+p <- df_comments_unnested2 %>% 
+  ggplot(aes(x = comment_sentiment_lex)) +
+    geom_bar(aes(color = n_words)) + 
+    scale_color_continuous(low = "green", high = "red") +
+    labs(x = "Polaridade no OpLexicon",y="Frequência") +
+    #geom_smooth(method = "lm") +
+    geom_vline(xintercept = 0, linetype = "dashed") +
+    geom_hline(yintercept = 0, linetype = "dashed")
+
+p
+```
+
+## so para OpLexicon
+
+```{r}
+df_comments_unnested2 <- df_comments_unnested %>% 
+#     inner_join(op30, by = "term") %>% 
+     inner_join(op30 %>% select(term, lex_polarity = polarity), by = "term") %>% 
+     group_by(comment_id) %>% 
+     summarise(comment_sentiment_lex = sum(lex_polarity),n_words = n())
+
+print(nrow(df_comments_unnested2))
+head(df_comments_unnested2)
+```
+
+```{r}
+p <- df_comments_unnested2 %>% 
+  ggplot(aes(x = comment_sentiment_lex)) +
+    geom_bar(aes(color = n_words)) + 
+    scale_color_continuous(low = "green", high = "red") +
+    labs(x = "Polaridade no OpLexicon",y="Frequência") +
+    #geom_smooth(method = "lm") +
+    geom_vline(xintercept = 0, linetype = "dashed") +
+    geom_hline(yintercept = 0, linetype = "dashed")
+
+p
+```
+
+```{r}
+library(tidyr)
+df_comments_wide <- df_comments_unnested2 %>% 
+  # filtrar fora palavras neutras
+  #filter(sentiment != 0) %>%
+  mutate(sentimentText = ifelse(comment_sentiment_lex < 0, "negativo", "positivo"))
+
+df_comments_wide
+```
+
+```{r}
+names(df_comments_wide)
+```
+
+## Juntar o sentimento aos dados
+
+EnsinoOnline_Atividades_docentes
+
+```{r}
+#vamos mudar o nome da coluna
+names(df_comments_wide) = c("comment_id","atividades_sentiment","atividades_n_words","atividades_sentimentText")
+
+#vamos criar uma coluna id
+df$id = as.numeric(row.names(df))
+
+df<-left_join(df,df_comments_wide,by=c("id"= "comment_id"))
+```
+
+```{r}
+str(df)
+```
+
+# Aprendizagem_estudantes
+
+EnsinoOnline_Aprendizagem_estudantes
+
+[@c]
+
+```{r}
+df_comments <- data.table::copy(df['EnsinoOnline_Aprendizagem_estudantes'])
+df_comments$id = as.numeric(row.names(df)) #criar uma coluna com o id das colunas
+str(df_comments)
+
+names(df_comments) = c('impacto','comment_id')
+head(df_comments)
+
+df_comments_unnested <- df_comments %>% unnest_tokens(term, impacto)
+str(df_comments_unnested)
+
+# vamos buscar a polaridade das palavras (positiva, negativa e neutra)
+df_comments_unnested2 <- df_comments_unnested %>% 
+#     inner_join(op30, by = "term") %>% 
+     inner_join(op30 %>% select(term, lex_polarity = polarity), by = "term") %>% 
+     group_by(comment_id) %>% 
+     summarise(comment_sentiment_lex = sum(lex_polarity),n_words = n())
+
+print(nrow(df_comments_unnested2))
+head(df_comments_unnested2)
+
+print(nrow(df_comments_unnested2))
+head(df_comments_unnested2)
+
+df_comments_wide <- df_comments_unnested2 %>% 
+  mutate(sentimentText = ifelse(comment_sentiment_lex < 0, "negativo", "positivo"))
+
+#vamos mudar o nome da coluna
+names(df_comments_wide) = c("comment_id","estudantes_sentiment","estudantes_n_words","estudantes_sentimentText")
+
+#vamos criar uma coluna id
+df$id = as.numeric(row.names(df))
+
+df<-left_join(df,df_comments_wide,by=c("id"= "comment_id"))
+```
+
+## Juntar o sentimento aos dados
+
+# EnsinoOnline_IES
+
+EnsinoOnline_IES
+
+```{r}
+df_comments <- data.table::copy(df['EnsinoOnline_IES'])
+df_comments$id = as.numeric(row.names(df)) #criar uma coluna com o id das colunas
+str(df_comments)
+
+names(df_comments) = c('impacto','comment_id')
+head(df_comments)
+
+df_comments_unnested <- df_comments %>% unnest_tokens(term, impacto)
+str(df_comments_unnested)
+
+
+# vamos buscar a polaridade das palavras (positiva, negativa e neutra)
+df_comments_unnested2 <- df_comments_unnested %>% 
+#     inner_join(op30, by = "term") %>% 
+     inner_join(op30 %>% select(term, lex_polarity = polarity), by = "term") %>% 
+     group_by(comment_id) %>% 
+     summarise(comment_sentiment_lex = sum(lex_polarity),n_words = n())
+
+print(nrow(df_comments_unnested2))
+head(df_comments_unnested2)
+
+df_comments_wide <- df_comments_unnested2 %>% 
+  mutate(sentimentText = ifelse(comment_sentiment_lex < 0, "negativo", "positivo"))
+
+#vamos mudar o nome da coluna
+names(df_comments_wide) = c("comment_id","IES_sentiment","IES_n_words","IES_sentimentText")
+
+#vamos criar uma coluna id
+df$id = as.numeric(row.names(df))
+
+df<-left_join(df,df_comments_wide,by=c("id"= "comment_id"))
+```
+
+ATE1 -\> TEX1
+
+```{r}
+names(df)
+```
+
+```{r eval=FALSE, include=FALSE}
+names(df)<-c("Age","Gender","Academic_Qualifications","Teaching_Experience","OTA1","OTA2","OTA3","POA1","POA2","POA3","POA4","POA5",
+             "POA6","POA7","POA8","BTE1","BTE2","BTE3","ATE1","ATE2","ATE3","ATE4","ATE5","ATE6","EnsinoOnline_Aprendizagem_estudantes",
+             "EnsinoOnline_Atividades_docentes","EnsinoOnline_IES","id","impacto","sentImpacto")
+
+names(df)
+```
+
+# Tirar POA1 e POA4
+
+Alfa indica a importância das variáveis para a explicação da dimensão.
+Validade das questões...
+
+OTS1 OTS2 OTS3
+
+# Transformar as escalas
+
+mediana negativos -2 -\> 1 -1 -\> 2 0 -\> 3 mediana positivos +p-\> 4
++g-\> 5
+
+NAs -\> 0
+
+ou Correr como está
+
+```{r}
+sort(unique(df$IES_sentiment))
+sort(unique(df$estudantes_sentiment))
+sort(unique(df$atividades_sentiment))
+
+print(paste("IES",median(c(1,2,5))))
+print(paste("estudantes",median(c(1,2,3,4,14))))
+print(paste("atividades",median(c(2,3,5))))
+```
+
+Vamos criar uma variável nova convertida para a nova escala. O modelo
+está a dar problemas e vamos tentar criar desta forma uma escala de
+likert
+
+```{r}
+# Mediana negativos
+mNegAti<-median(df$atividades_sentiment[df$atividades_sentiment<0],na.rm = TRUE)
+mNegEst<-median(df$estudantes_sentiment[df$estudantes_sentiment<0],na.rm = TRUE)
+mNegIES<-median(df$IES_sentiment[df$IES_sentiment<0],na.rm = TRUE)
+# Mediana positivos
+mPosAti<-median(df$atividades_sentiment[df$atividades_sentiment>0],na.rm = TRUE)
+mPosEst<-median(df$estudantes_sentiment[df$estudantes_sentiment>0],na.rm = TRUE)
+mPosIES<-median(df$IES_sentiment[df$IES_sentiment>0],na.rm = TRUE)
+
+print(paste("mNegAti",mNegAti))
+print(paste("mNegEst",mNegEst))
+print(paste("mNegIES",mNegIES))
+print(paste("mPosAti",mPosAti))
+print(paste("mPosEst",mPosEst))
+print(paste("mPosIES",mPosIES))
+
+# criar colunas novas
+df$atividades_sentConv <- 0
+df$estudantes_sentConv <- 0
+df$IES_sentConv <- 0
+
+# Negativo > Menor ou igual mediana neg 
+df$atividades_sentConv[df$atividades_sentiment<=mNegAti] = 1
+df$estudantes_sentConv[df$estudantes_sentiment<=mNegEst] = 1
+df$IES_sentConv[df$IES_sentiment<=mNegIES] = 1
+# Negativo > Maior que mediana ou menor que 0
+df$atividades_sentConv[df$atividades_sentiment>mNegAti & df$atividades_sentiment <0 ] = 2
+df$estudantes_sentConv[df$estudantes_sentiment>mNegEst & df$estudantes_sentiment <0 ] = 2
+df$IES_sentConv[df$IES_sentiment>mNegIES & df$IES_sentiment<0] = 2
+# Igual a NANs 
+df$atividades_sentConv[is.na(df$atividades_sentiment)] = 0
+df$estudantes_sentConv[is.na(df$estudantes_sentiment)] = 0
+df$IES_sentConv[is.na(df$IES_sentiment)] = 0
+# Positivo > Maior que a mediana positiva
+df$atividades_sentConv[df$atividades_sentiment>=mPosAti] = 5
+df$estudantes_sentConv[df$estudantes_sentiment>=mPosEst] = 5
+df$IES_sentConv[df$IES_sentiment>=mNegIES] = 5
+# Positivo > Maior que 0 e menor que mediana
+df$atividades_sentConv[df$atividades_sentiment<mPosAti & df$atividades_sentiment >0 ] = 4
+df$estudantes_sentConv[df$estudantes_sentiment<mPosEst & df$estudantes_sentiment >0 ] = 4
+df$IES_sentConv[df$IES_sentiment<mPosIES & df$IES_sentiment>0] = 4
+# Igual a 0
+df$atividades_sentConv[df$atividades_sentiment==0] = 3
+df$estudantes_sentConv[df$estudantes_sentiment==0] = 3
+df$IES_sentConv[df$IES_sentiment==0] = 3
+
+```
+
+```{r}
+names(df)
+str(df)
+```
+
+```{r}
+names(df)
+str(df[c("EnsinoOnline_Atividades_docentes","atividades_sentiment","atividades_n_words","atividades_sentimentText")])
+```
+
+```{r}
+library(xlsx)
+
+#df<-df[-c(25:28)]
+
+write.csv(df,"../dados/dados_texto_SMARTPLS.csv",quote = TRUE )
+
+# Tenho que remover quotes e os comentários senão não se consegue importar no SmartPLS
+
+df_SemTexto<-df[,-c(25:27)]
+write.csv(df_SemTexto,"../dados/dados_SMARTPLS.csv",quote = FALSE )
+
+```
+
+# Gráficos
+
+OTS1 = Alunos OTS2 = Professores OTS3 = IES
+
+Gráfico amarelo
+
+```{r}
+library(RColorBrewer)
+library(gridExtra)
+
+myColors <- colorRampPalette(brewer.pal(8, "Spectral"))
+p1 <- df %>% 
+  ggplot(aes(x = estudantes_sentConv)) +
+    geom_bar(aes(color = atividades_n_words)) + 
+    scale_color_continuous(low = "green", high = "red") +
+    labs(x = "student online learning",y="number of answers") +
+    geom_vline(xintercept = 0, linetype = "dashed") +
+    geom_hline(yintercept = 0, linetype = "dashed") +
+    theme_classic()+theme(text = element_text(size=14))+
+    scale_fill_manual(values = myColors)
+
+p2 <- df %>% 
+  ggplot(aes(x = atividades_sentConv)) +
+    geom_bar(aes(color = atividades_n_words)) + 
+    scale_color_continuous(low = "green", high = "red") +
+    labs(x = "teaching career development",y="number of answers") +
+    geom_vline(xintercept = 0, linetype = "dashed") +
+    geom_hline(yintercept = 0, linetype = "dashed") +
+    theme_classic()+theme(text = element_text(size=14))+
+    scale_fill_manual(values = myColors)
+
+p3 <- df %>% 
+  ggplot(aes(x = IES_sentConv)) +
+    geom_bar(aes(color = atividades_n_words)) + 
+    scale_color_continuous(low = "green", high = "red") +
+    labs(x = "online learning in HEI",y="number of answers") +
+    geom_vline(xintercept = 0, linetype = "dashed") +
+    geom_hline(yintercept = 0, linetype = "dashed") +
+  theme_classic()+theme(text = element_text(size=14))+
+    scale_fill_manual(values = myColors)
+
+
+grid.arrange(p1,p2,p3,widths = c(1.5,1.5,1.5))
+
+```
+
+```{r}
+print("atividades")
+table(df$atividades_sentConv)
+print("estudantes")
+table(df$estudantes_sentConv)
+print("IES")
+table(df$IES_sentConv)
+```
+
+O impacto do ensino à distância na aprendiza-gem dos estudantes, tem
+aproximadamente 9 respostas com um sentimento negativo (14%), bem como
+sentiment neutron com 14 (21%) e 30 com um sentimento positivo (46%). O
+sentimento em relação às atividades de ensino apresenta 11 respostas com
+sentimento negativo (17%), 11 sentimento neutro (17%) e 31 positivo
+(47%). Em relação à instituição de ensino superior com 3 respostas com
+sentimento negativo (5%), 12 neutro (18%) e 31 positivo (52%). A opinião
+em relação à instituição de ensina é a que apresenta uma percentagem
+maior de sentimento positivo (52%) em oposição a 5% que manifestaram
+sentimento positivo. A opinião em relação às atividades de ensino
+regista a maior percentagem de sentimento positivo (17%) bem como um
+sentimento neutro.
+
+```{r}
+n <-length(df$estudantes_sentConv)
+print(paste("Estudantes ","negativas",9/n,"neutras",14/n,"positivas",30/n))
+print(paste("Atividades de ensino","negativas",11/n,"neutras",11/n,"positivas",31/n))
+print(paste("Instituição de ensino superior","negativas",3/n,"neutras",12/n,"positivas",34/n))
+```
+
+# Examples for the sentiment explanation
+
+```{r}
+library(stringr)
+words = "Considero que a minha adaptação se efetuou de uma forma tranquila"
+number_words = str_count(words,'\\w+')
+
+for (i in 1:number_words){
+  print(paste(word(words,i)," > polaridade",get_word_sentiment(word(words,i))))
+}
+get_word_sentiment("forma")
+```
