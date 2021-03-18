@@ -1,0 +1,130 @@
+---
+title: "nclusters"
+author: "Pedro Sobreiro"
+date: "26/01/2021"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+  word_document: default
+bibliography: references.bib
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Número de clusters
+
+The calculation of the number of clusters used the package mclust [@scrucca2016] using the Bayesian Information Criterion (BIC). The model that gives the minimum BIC score can be selected as the best model [@schwarz1978] simplifying the problem related to choosing the number of components and identifying the structure of the covariance matrix, based on modelling with multivariate normal distributions for each component that forms the data set [@akogul2016].
+
+In multivariate models are available the following approaches:
+
+-   "EII"spherical, equal volume
+-   "EEE"ellipsoidal, equal volume, shape, and orientation
+-   "VII"spherical, unequal volume
+-   "VVV"ellipsoidal, varying volume, shape, and orientation, which is used as default for initialization of EM algorithm
+-   VVI": diagonal, varying volume and shape
+
+```{r cars}
+library(readxl)
+df <- read.csv2("dataScallabis_novo.v4.csv",header = TRUE,sep = ",",dec = "." )
+head(df)
+
+```
+
+```{r}
+names(df)
+```
+
+```{r}
+X<-df[,c("bes","lealcomp_total","centralidade","importancia")]
+head(X)
+```
+
+```{r}
+str(X)
+```
+
+Confirmar os valores nulos
+
+```{r}
+str(X)
+X[is.na.data.frame(X)]
+```
+
+```{r}
+library(mclust)
+BIC<-mclustBIC(X)
+```
+
+Considerando que os valores estão em escalas diferentes devemos realizar a normalização dos dados.
+
+```{r}
+Y<-data.table::copy(X)
+Y<-scale(Y)
+BICNormalized<-mclustBIC(Y)
+BICNormalized
+plot(BICNormalized)
+```
+
+```{r}
+
+BIC
+```
+
+```{r}
+plot(BIC)
+```
+
+```{r}
+BIC<-mclustBIC(X,modelNames = c("VVI"))
+str(BIC)
+plot(BIC,legendArgs = NULL)
+```
+
+```{r}
+BIC<-mclustBIC(X,modelNames = c("EEI"))
+str(BIC)
+plot(BIC,legendArgs = NULL)
+```
+
+```{r}
+z<-data.frame(table(BIC))
+z
+```
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+z<-data.frame(BIC[,"EEI"])
+z$f <-  row.names(data.frame(BIC[,"EEI"]))
+names(z)<-c("value","cluster")
+z$value <- z$value *-1
+z<-z[complete.cases(z),]
+
+theme_classic()
+p<-ggplot(data = z) + aes(x = cluster,y = value)+
+  geom_bar(stat="identity")
+  labs(x = "cluster",y="BIC") +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  geom_hline(yintercept = 0, linetype = "dashed") 
+
+p + theme_classic()
+
+```
+
+```{r}
+str(z)
+```
+
+```{r}
+seq.int(from=18,to=68,length.out=9)
+```
+
+```{r}
+cut(18:68,10)
+
+
+```
