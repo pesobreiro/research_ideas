@@ -1,0 +1,291 @@
+---
+title: "Reprodutibilidade da Investigação na intervenção dos treinadores de futebol: uma abordagem para revisões sistemáticas de literatura"
+
+author: |
+  | Pedro Sobreiro^[Corresponding author: sobreiro@esdrm.ipsantarem.pt] $^1$, José Rodrigues $^1$, Gonçalo $^2$
+  | $^1$Affiliation1,  $^2$Affiliation2
+
+abstract: |
+  |Introdução - A ciência é impulsionada por dados, com o desenvolvimento de novas tecnologias, a crescente complexidade 
+  | da investigação, e a quantidade de dados recolhidos. O desafio é assegurar que a investigação esteja disponível a todos
+  | [@hanson2011] garantindo a reprodutibilidade. Uma investigação desenvolvida para replicar 100 estudos realizados em 
+  | revistas de psicologia não conseguiu reproduzir os resultados originais [@collaboration2015]. A falta de provas de que os
+  | resultados da investigação científica não podem ser reproduzidos pode prejudicar a credibilidade da ciência bem como o seu
+  | financiamento [@hedges2019].
+  | Objetivos - O presente estudo propõe uma abordagem para apoiar reprodutibilidade [@peng2009], para Revisões Sistemáticas da Literatura (SLR) na Intervenção de Treinadores de Futebol e familiarizar os investigadores com um fluxo de trabalho melhorado.
+
+  | Métodos - A linguagem R é utilizada e vários pacotes em cada fase do SLR (planear, realizar e comunicar). Apoiar a reprodutibilidade e reduzir o esforço do investigador na seleção de artigos (representando 51% do tempo [@allen1999]), extração de dados, e comunicar os resultados.
+
+  | Resultados - Utilizando um exemplo de como pode ser desenvolvido uma SLR assegurando a reprodutibilidade da investigação. Mostramos como os investigadores podem melhorar o seu trabalho, permitindo despenderem menos tempo na preparação e na comunicação dos resultados da investigação.
+
+  | Conclusões - Definimos uma abordagem para que os investigadores organizem o seu trabalho, assegurando a reprodutibilidade, e racionalizando o seu processo. Encorajamos os investigadores a organizar a sua investigação utilizando os princípios propostos e a considerar a distribuição da análise e dos dados com os trabalhos que estão a ser produzidos. O conhecimento destes instrumentos será importante para a comunicação e avanços na investigação na intervenção do treinador de futebol. No futuro, pretendemos alargar isto a outras áreas das ciências do desporto.
+
+
+keywords: investigação reproduzivel, revisao sistematica de literatura, futebol, treinador
+
+output:
+#  pdf_document: default
+  html_document: default
+  bookdown::pdf_book: 
+#    base_format: rticles::mdpi_article
+    fig_height: 5
+    fig_width: 8
+#   dev: "pdf"
+    toc: no
+    number_sections: true
+    
+bibliography: references.bib
+
+mainfont: Arial
+fontsize: 12pt
+geometry: left = 2.5cm, right = 2.5cm, top = 2.5cm, bottom = 2.5cm
+papersize: A4
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+library(rticles)
+library(bookdown)
+```
+
+Introduction - Science is driven by data, with the development of new technologies, the increasing complexity of research, and the amount of data collected. The challenge is to ensure that research is available to all [@hanson2011] ensuring reproducibility. A research developed to replicate 100 studies conducted in psychology journals failed to reproduce the original results [@collaboration2015]. The lack of evidence that the results of scientific research cannot be reproduced can undermine the credibility of science and its funding [@hedges2019].
+
+Objectives - This study proposes an approach to support reproducibility [@peng2009], for Systematic Literature Reviews (SLR) in Football Coaches Intervention and familiarize researchers with an improved workflow.
+
+Methods - The R language is used and several packages in each phase of the RSL (plan, perform and communicate). To support reproducibility and reduce researcher effort in article selection (representing 51% of the time [@allen1999]), data extraction, and communicate the results.
+
+Results - Using an example of how a SLR can be developed ensuring reproducibility of research. We show how researchers can improve their work, allowing them to spend less time preparing and communicating research results.
+
+Conclusions - We define an approach for researchers to organize their work, ensuring reproducibility, and streamlining their process. We encourage researchers to organize their research using the proposed principles and to consider the distribution of analysis and data with the work being produced. The knowledge of these tools will be important for communication and research advances in the soccer coach's intervention. In the future, we intend to extend this to other areas of sports science.
+
+# Introduction
+
+Science is driven by data, with the development of new technologies, the increasing complexity of research, and the amount of data collected. The challenge is to ensure that research is available to all [@hanson2011] ensuring reproducibility. A research developed to replicate 100 studies conducted in psychology journals failed to reproduce the original results [@collaboration2015]. The lack of evidence that the results of scientific research cannot be reproduced can undermine the credibility of science and its funding [@hedges2019].
+
+The problem can be addressed using new approaches while simplifying the self-process of developing a reproducible article. The use of technology as a research tool supports the exploration of new opportunities. A seminal paper published by @knuth1984 suggested the concept of literate programming, where the code could be explained in a natural language, mixing source code and text. This approach allowed to focus on the explanation instead of only instructing the computer what to do. Those ideas allowed the exploration of other approaches addressing the lack of evolution in papers publication, @gentleman2005 stated that many papers were developed the same way that were fifty years ago. The documents are static and do not explore the advantages of computational resources that are available. @gentleman2005 proposed a mixture of code and text, that could be processed in different ways. The idea was to create dynamic documents including narrative text used in the article and the R code that generates plots, tables, and develop the analysis. The narrative text of article is produced and integrated with the code instructions, integrating static components and dynamic components processed according to the data used to support the article. Allowing other researchers can explore the data used and the analysis being developed.
+
+The use of graphical tools does not easily support reproducibility and creation of dynamic documents, such as Graphic User Interface (GUI) of SPSS, which does not guarantee all the steps performed in the manipulation of data, if records were changed or data was entered manually. In languages like R every change in data requires corresponding changes in the code.
+
+The term reproducible research refers to studies that contain all the materials needed to reproduce the scientific results of other researchers, which allows other researchers to identify flaws in calculations and improve scientific accuracy [@calerovaldez2020]. The difficulty in reproducing discoveries in scientific studies that cannot be replicated may compromise the credibility of science [@hedges2019].
+
+The use of statistical software in studies has major implications for the reproduction and reproducibility of research [@peng2009]. The use of software is only one part, to ensure the reproducibility criteria, authors must submit all the elements used, such as code for analysis, data, and results. Without clear, transparent and open statistical methods (e.g. using open source tools), the difficulty to reproduce a study increases, and also the risk of fraudulent analysis and conclusions, which is aggravated if the code used in the statistical analysis is not made available [@lebeau2020].
+
+Research areas such as epidemiology provide guidance for reproducible research criteria [@peng2006]: (1) data used in the analysis available; (2) code used to generate tables, figures and other results; (3) documentation on code, type of software used, and versions; (4) standard methods for making code, data and documentation available. A minimum requirement is the availability of all materials necessary to reproduce the results presented, in open-source tools such as R [@peng2009]. Many scientific journals have websites that can host supplementary material for published articles, such as data that can be downloaded together with computer code for reproduction of specific analyses [@peng2006].
+
+Studies about systematic literature review, namely in the context of coach intervention, (e.g. @santos2018) could be developed with tools that reduce the effort of the researcher and simultaneously reduce existing limitations, such as developing the analysis in a software and copying the results to a document. This increases the productivity of the researcher and supports the reproducibility. Moreover, scientists are confronted with an enormous amount, complexity of available tools and variety of data that is now being produced (Hanson et al., 2011), while there is a need to ensure the reproducibility of the studies developed [@peng2011].
+
+The developments that have been taking place in technologies and information systems allow greater capacities for data processing and analysis, facilitating the development of research. We propose an approach to support reproducibility [@peng2009], for Systematic Literature Reviews (SLR) in Football Coaches Intervention and familiarize researchers with an improved workflow using R, R Markdown, and some libraries in the process of developing for scientific production.
+
+This article is divided in the following sections: The first section provides an overview of the topic also identifying the advantages of reproducible research; the next section is provided some background about R, RMarkdown and existing packages that can be used; the third section provides information of the methodology used; the fourth section is provided an example exploring research reproducible, how can be used to explore coaches' intervention, Finally, are given final conclusions.
+
+# Tools for SLR
+
+## R and RMarkdown
+
+R recognized open-source and free to use tool for statistical analysis [@calerovaldez2020]
+
+The use of R Markdown allows to combine code used to process the data and perform the analyses integrated with the text. The code and analyses can be interleaved with the text in code blocks. This allows the research article to be generated with all the instructions used to obtain the results. This has great advantages over applications with graphic interfaces that normally do not identify the steps developed.
+
+RMarkdown is a literate programming approach. Code and analyes are interleaved in text in so-called "code chunks". Code chunks can contain R code, but also code from other languages (e.g., Python). This approach allows us to combine code used to develop analysis with regular text. This document was written using RMarkdown and integrating some analysis code in between. In R the support to R Markdown is based in the knitr package [@xie2015] that allows the integration of text chunks and computer code (code chunks). When the document is "knited" (processed) the outputs are place within the text of the output document. This approach allow the elaboration of the document text and simultaenously of the outputs that are generated using the code chunks. The following code exemplifies the duplicates removal of articles:
+
+    library(readxl)
+    library(dplyr)
+    #number of selected articles
+    articles<-read_excel("data/data_articles_gc.xlsx")
+    articles_w_duplicates<-articles %>% distinct(title,.keep_all = TRUE)
+
+A linguagem R é utilizada e vários pacotes em cada fase do SLR (planear, realizar e comunicar). Apoiar a reprodutibilidade e reduzir o esforço do investigador na seleção de artigos (representando 51% do tempo [@allen1999]), extração de dados, e comunicar os resultados.
+
+## Packages available
+
+Neste estudo vamos utilizar o R, alguns pacotes disponíveis....
+
+Bookdown [@xie2017] package allow to create references in R Markdown, allowing to link figures, tables, equations within the article.
+
+METAGEAR , an R package aimed at improving the reproducibility of systematic reviews and meta-analysis. It is a comprehensive toolbox that spans the entire research synthesis taxonomy, and supports a large diversity of functionalities to help screen abstracts, download articles, extract data from figures and model dependencies within and among effect sizes, and various other tools to improve the quality of statistics used in meta-analysis (Table 1)" (Lajeunesse 2016:323)
+
+-   Package para identificar os packages existentes...
+-   readtext
+-   ggplot2
+-   Dplyr
+-   MetaGear
+-   KableExtra
+-   Revtools
+
+TODO: COLOCAR A DESCRIÇÃO DOS PACKAGES UTILIZADOS...
+
+## Language Processing
+
+A etapa seguinte pode ser desenvolvida utilizando Natural Language Processing, por exemplo recorrendo ao BART (Lewis et al., 2019) que permite resumir os artigos selecionados depois de um pré-processamento dos PDF's, como podemos ver na figura 4. No exemplo o resumo é realizado por página do PDF permitindo ter uma perspetiva global do artigo e a identificação dos aspetos mais importantes abordados.
+
+A automatização da extração de dados na revisão sistemática através de Natural Language Processing pode ser uma estratégia para reduzir o tempo necessário no desenvolvimento de uma revisão sistemática (Jonnalagadda et al., 2015).
+
+# Methodology
+
+Systematic Literature Review (SLR) according to fink @fink2010 is a systematic, explicit, and reproducible method supporting the identification, evaluation and summarizing existing work produced by researchers. The strategy adopted to support the Football Coaches Intervention involved the adoption of R in each phase of the SLR (plan, perform and communicate), to support the reproducibility and reduce researcher effort in article selection, which according to @allen1999 could involve 51% of the time for the data extraction, and communication of the results.
+
+The search strategy adopted use the Population, Intervention,Comparison, Outcomes and Context (PICOC) to define the research string [@petticrew2006], the adopted search string was "Football" AND "Intervention" AND "coach" as represented in Table 1. The search string was developed in the Scopus database on 16 November 2020 filtering the search to all articles peer-reviewed between 2010-2020, the list of articles was exported to bibtex format. Where excluded books, non-english articles, patents and thesis. To simplify the manipulation of the identified articles bib2df [@ottolinger2019] was used to convert to dataframe and allow the manipulation using dplyr [@wickham2021], removing the duplicates.
+
+| Criteria     | Keywords                                     |
+|--------------|----------------------------------------------|
+| Population   | Research papers about **football**           |
+| Intervention | **coach intervention**                       |
+| Comparison   | None                                         |
+| Outcome      | Intervention of soccer coaches               |
+| Context      | The setting environment of the investigation |
+
+Table 1. Identification of the search keywords using Population, Intervention, Comparison, Outcome and Context
+
+Considering the time involved in the screening process which according to @allen1999 can correspond to 51% of the time involved, this step was developed using ASReview [@asreviewcoredevelopmentteam2019], a Machine learning tool allow to estimate a probability that a document to be included and automatically rank documents from most to least relevant, allowing the reviewer to identify the studies to include, following the steps: (1) Select randomly some articles identifying at least five relevant and five irrelevant; (2) ASReview orders the publications showing the most relevant papers and (3) the final list was exported develop the a quantitative analysis. The representation of the flow how the study was developed, involving the steps of studies founds, collated and screened, and included studies for systematic reviews was developed using package metagear [@lajeunesse2016].
+
+To develop a qualitative analysis, the R package ggplot2 [@wickham2016] was used to create an overall representation of the selected studies. The representation of the overall trends in the text was developed using quanteda [@benoit2018] for the analysis of the text supporting the representation of text analysis and visual presentation. The extraction of text from the articles pdfs was developed using the readtext package [@benoit2020]. The package revtools [@westgate2019] was used to identify text patterns in the title, keywords and abstract.
+
+# Reproducible research in the research of coaches' intervention: A case study
+
+This section exemplifies the results using R Markdown In this case study we use R Markdown for the text we produce in this article supporting both data processing and analysis. Using an example of how a SLR can be developed ensuring the reproducibility of the research. We show how researchers can improve their work, allowing them to spend less time preparing and communicating research results. To start the work, we can use the package rticles [@allaire2021] which allows us to select a model for several newspapers such as Elsevier, Frontiers, MDPI, Sage and Taylor and Francis.
+
+Following the PICOC assessment the adopted search string was "Football" AND "Intervention" AND "coach". The search string was developed in the Scopus database on 16 November 2020. Then we carried the inclusion-exclusion criteria. All the studies between 2010-2020 peer-reviews were included. Where excluded books, non-english articles, patents and thesis. The removal of duplicates articles can be performed using dplyr [@wickham2020] a R package that simplifies the data manipulations, allowing to remove duplicates using the distinct function.
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+library(readxl)
+library(dplyr)
+#number of selected articles
+articles<-read_excel("data/data_articles_gc.xlsx")
+str(articles)
+articles_w_duplicates<-articles %>% distinct(title,.keep_all = TRUE)
+dim(articles_w_duplicates)
+table(articles$`incluir(S/N)`)
+```
+
+The representation of the flow how the study was developed, involving the steps of studies founds, collated and screened for systematic reviews can be developed using package metagear [@lajeunesse2016]. After the screening process the final articles dataset includes 90 articles, excluding 53 not fitting in the research interest. Using the plot_PRISMA() function was possible to create the figure \@ref(fig:prisma).
+
+```{r prisma, fig.cap="Publications by year", echo=FALSE}
+library(metagear)
+phases <- c("START_PHASE: 143 of studies identified through database searching",
+            "143 of studies after duplicates removed",
+            "EXCLUDE_PHASE: 0 duplicate articles where removed",
+            "90 of full-text articles assessed for eligibility",
+            "EXCLUDE_PHASE: 53 of full-text excluded, not fitting eligibility criteria",
+            "90 articles with full access",
+            "EXCLUDE_PHASE: 0 articles we did not have full text access ",
+            "final 90 of studies included in qualitative analysis")
+#plot_PRISMA(phases,colWidth = 40, design = c(fontSize=10))
+p<-plot_PRISMA(phases,colWidth = 40,)
+
+```
+
+## Quantitative analysis
+
+The report of the quantitative analysis can be developed using ggplot [@wickham2016], next figure (figure \@ref(fig:pubyear)) represents the number of selected studies by year, where is possible to see an increasing research addressing Football Coach Intervention.
+
+```{r pubyear, fig.cap="Publications by year", echo=FALSE}
+library(ggplot2)
+d<-ggplot(data = articles,mapping = aes(x = factor(year)))
+d+geom_bar()+labs(x='Years',y='Number of articles') + theme_classic()+
+  theme(axis.text.x = element_text(angle = 0,vjust = 0.5))
+```
+
+A subset of the selected articles (the more recent) is represented in the following table \@ref(tab:articles), this table was generated using KableExtra [@zhu2020].
+
+```{r articles, echo=FALSE}
+library(kableExtra)
+#articles$ref <- paste0("[@",articles$bibtexkey,"]")
+# bootabs=T enable booktabs format to remove unnecessary lines 
+# linesep="" avoids adding line space after 5 rows
+kbl(head(articles[, c('year','title','journal')],n = 10), caption = "Example of 10 more recent selected articles", 
+    booktabs=T,col.names = c("Year","Title","Journal"), linesep = "\n") %>%
+  kable_styling(font_size = 8) %>%
+  column_spec(1, width = "1cm") %>%
+  column_spec(2, width = "9cm") %>%
+  column_spec(3, width = "4cm") 
+
+```
+
+The figure \@ref(fig:journals) shows that the majority of the studies are being published in the British Journal of Sports Medicine, and in Journal of Strength and Conditioning Research with 10 articles each, followed by Clinical Journal of Sport Medicine, BMC Public Health, and International Journal of Sports Science and Coaching. The first journal outside of the area of sport medicine is in the area Sport Psychology, the "Cuadernos de Psicologia del Deporte" with 3 articles [@pulidogonzález2018; @alonsourratobar2015; @soriano2014].
+
+```{r journals, message=TRUE, warning=FALSE, fig.cap="Articles by Journal"}
+journals<-articles %>% 
+  select(journal) %>%
+  group_by(journal) %>%
+  summarize(count = n()) 
+  
+# select only the journals with more than 1 article
+journals<-subset(journals,subset = count>1)
+
+g<-ggplot(data = journals,mapping = aes(x = journal,y = count)) 
+g+geom_col()+coord_flip()+labs(x='Jornal',y='Number of articles') + scale_y_continuous(breaks=c(2,4,6,8,10))+
+  theme_classic()
+```
+
+The analysis of common words in the title and abstract of selected articles, allows to identify common words such football, soccer, rugby, which could require a reformulation of search keywords. The common words in the abstract also give some guidelines about what is being addressed in the abstract of the articles, where clearly can be identified the coach as main word, followed by intervention. If was necessary to reformulate the search string was detected and the previous steps where executed again with a less effort of the researcher, allowing to think about the process being developed and information obtained, instead of executing non-core repetitive tasks.
+
+```{r}
+library(revtools)
+library(gridExtra)
+
+# frequencia no titulo do artigo
+x_dtm<-make_dtm(articles$title,min_freq = 0.06)
+
+#create a matrix of the document term-matrix
+x_dtm_matrix <- as.matrix(x_dtm)
+#apply function to calculate columns totals
+totals<-apply(x_dtm_matrix,MARGIN = 2,sum)
+
+#create dataframe
+df_dtm<-data.frame(totals)
+df_dtm$words<-row.names(df_dtm)
+                   
+g1<-ggplot(data = df_dtm,aes(x=words,y=totals)) +
+  labs(title = "Common words in the title",y = "freq")+ #modify legend and plot labels
+  geom_bar(stat = "identity") + coord_flip()+
+  geom_text(aes(label=totals),hjust=-1.6) + theme_classic()
+
+# frequencia no abstract
+x_dtm<-make_dtm(articles$abstract,min_freq = 0.3)
+
+#create a matrix of the document term-matrix
+x_dtm_matrix <- as.matrix(x_dtm)
+#apply function to calculate columns totals
+totals<-apply(x_dtm_matrix,MARGIN = 2,sum)
+
+#create dataframe
+df_dtm<-data.frame(totals)
+df_dtm$words<-row.names(df_dtm)
+                   
+g2<-ggplot(data = df_dtm,aes(x=words,y=totals)) +
+  labs(title = "Common words in the abstract",y = "freq")+ #modify legend and plot labels
+  geom_bar(stat = "identity") + coord_flip()+
+  geom_text(aes(label=totals),hjust=-1.6) + theme_classic()
+
+# frequencia no abstract
+x_dtm<-make_dtm(articles$abstract,min_freq = 0.3)
+
+#create a matrix of the document term-matrix
+x_dtm_matrix <- as.matrix(x_dtm)
+#apply function to calculate columns totals
+totals<-apply(x_dtm_matrix,MARGIN = 2,sum)
+
+#create dataframe
+df_dtm<-data.frame(totals)
+df_dtm$words<-row.names(df_dtm)
+                   
+g2<-ggplot(data = df_dtm,aes(x=words,y=totals)) +
+  labs(title = "Common words in the abstract",y = "freq")+ #modify legend and plot labels
+  geom_bar(stat = "identity") + coord_flip()+
+  geom_text(aes(label=totals),hjust=-1.6) + theme_classic()
+
+library(cowplot)
+plot_grid(g1, g2, align = "h", ncol = 2, rel_heights = c(1/2, 1/2))
+```
+
+# Discussion and conclusion
+
+This study aimed to raise and explore how reproducible research principles could be explored, developing the systematization of the steps applied in the context of a Systematic Literature Review addressing the coach intervention. The theme of reproducibility in research had been addressed already in other areas such Biostatistics [@peng2009], Epidemiologic [@peng2006], Bioinformatics [@gentleman2005] and Computer Science with the seminal paper of @knuth1984. The area Sport Sciences, namely the area addressed in this article of Sport Coach Interventions have to consider the exploration of these principles and adhering to it.
+
+The computational resources available and being developed allow the exploration of additional tools to support the analysis of an increasing research. The development of tools supported in machine learning [@vandeschoot2020] allow the researchers to explore systematic review or meta-analysis efficiently. The use of
+
+The processing capacity of the computers and the extraordinary evolution that has been occurring in the tools to support the research, allows the exploration of scenarios that were not possible before. Research teams can gain competitive advantages in using this type of solutions. The tools for systematic reviews are being developing rapidly and algorithms that support them.
+
+This article suggests how can be exploited the adoption of the concept of reproducible research using R Markdown to support the integration of article narrative text with the "code" used to develop the data analysis. This could increase the researcher reproducibility and productivity, ensuring the transparency of the analysis.
+
+# References
