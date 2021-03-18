@@ -1,0 +1,308 @@
+---
+title: "Previsão tempo de nado"
+author: "Pedro Sobreiro"
+
+abstract: |
+  | TODO.
+
+output:
+  pdf_document: 
+#  html_document: default
+#  bookdown::pdf_book: 
+#    base_format: rticles::mdpi_article
+    fig_height: 5
+    fig_width: 8
+#   dev: "pdf"
+    toc: no
+    number_sections: true
+    citation_package: natbib
+
+    
+bibliography: references.bib
+biblio-style: "apalike"
+
+mainfont: Arial
+fontsize: 12pt
+geometry: left = 2.5cm, right = 2.5cm, top = 2.5cm, bottom = 2.5cm
+papersize: A4
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(rticles)
+library(bookdown)
+
+# get rmarkdown directory
+caminho<-getwd()
+# set working directory
+setwd(caminho)
+```
+# Previsão do tempo de nado 
+
+## Descrição variáveis
+
+-   50mFreeTime - Tempo total dos 50m Livres segundos
+-   50mFreeTime5.20 - Tempo retirado entre os 5 e 20 metros, o qual foi utilizado para calcular a velocidade de nado, a frequência gestual, a distância de ciclo e o índice de nado segundos
+-   50mFreeVelocity - Velocidade de nado calculada por 15/pelo variável anterior (tempo entre os 5 e 20m) m/s
+-   50mFreeStrokeRate - Frequência gestual, retirada com o cronômetro entre os 5m e 20m ciclos/min
+-   50mFreeStrokeLength - Distância de ciclo calculada por [(60xvelocidade)/frequência gestual] = [(60x\@50mFreeVelocity)/\@50mFreeStrokeRate] metros
+-   50mFreeSwimIndex - Índice de nado calculada por [velocidadexdistância de ciclo] = [\@50mFreeVelocityx\@50mFreeStrokeLength]
+-   50mFreeTurnTime5.10m - Tempo de viragem 5m antes da viragem + 10m depois da viragem segundos
+-   50mFreeTurnIndex - Índice de viragem calculado pela divisão entre o tempo de de nado (entre os 5m e 20m) e o tempo da viragem = \@50mFreeTime5.20/\@50mFreeTurnTime
+-   SECO.MS1.Distância e as restantes são as tentativas que foram realizadas de força em seco. MS = membros superiores - lançamento da bola medicinal e MI = membros inferiores - salto horizontal, 1, 2 e 3 são as 3 tentativas
+-   LMAverageDistance - É a média da distância das 3 tentativas para os membros inferiores
+-   LMBestDistance - Foi a melhor distância encontrada do atleta nas 3 tentativas possiveis nos membros inferiores
+-   ULAverageDistance - É a média da distância das 3 tentativas para os membros superiores
+-   ULBestDistance - Foi a melhor distância encontrada do atleta nas 3 tentativas possíveis nos membros superiores
+
+## Abrir ficheiros
+
+```{r message=FALSE, warning=FALSE, include=TRUE}
+library(foreign)
+library(writexl)
+
+print(caminho)
+dadosSPSS<-read.spss("../dados/BaseDadosEstudoMestrado.sav",to.data.frame = TRUE)
+names(dadosSPSS)<-c("num","sportSeason","name", "esc", "nFPN", "club", "assoc","gender","yearOfBirth","age",
+                    "ageDec","height","weight","bodyMass","wingSpan","wingSpanHeight","fatherHeight","motherHeight",
+                    "adultHeight","adultHeightLevel", "t50mFree","t50mFree5.20m","freeVelocity50m","freeStrokeRate50m",
+                    "freeStrokeLength50m","freeSwimIndex50m","freeTurnTime5.10m_50m","freeTurnIndex50m","SecoMI1Dist",
+                    "SecoMI2Dist","SecoMI3Dist","LMAveDist","LMBestDist","SECOMS1Dist","SECOMS2Dist","SECOMS3Dist",
+                    "ULAveDist","ULBestDist")
+str(dadosSPSS)
+write_xlsx(dadosSPSS,"../dados/dadosNadadores.xlsx")
+```
+
+## Selecionar as variáveis
+
+```{r message=FALSE, warning=FALSE, include=TRUE}
+names(x = dadosSPSS)
+```
+
+Vamos utilizar as variáveis: age; height; weight; wingSpan; 50mFreeTime; 50mFreeTime5.20; 50mFreeVelocity; 50mFreeStrokeRate; 50mFreeStrokeLength; 50mFreeSwimIndex; 50mFreeTurnTime5.10m; 50mFreeTurnIndex; LMAveDist; ULAveDist
+
+```{r message=FALSE, warning=FALSE, include=TRUE}
+library(dplyr)
+
+
+df<- dadosSPSS %>% 
+  select(age,height,weight,wingSpan,t50mFree, t50mFree5.20m,freeVelocity50m,freeStrokeRate50m,
+         freeStrokeLength50m,freeSwimIndex50m,freeTurnTime5.10m_50m, freeTurnIndex50m, LMAveDist, ULAveDist)
+
+str(df)
+```
+
+## Descritivas
+
+```{r}
+summary(df)
+```
+
+## Verificação dos pressupostos
+
+Peña, E. A., & Slate, E. H. (2006). Global Validation of Linear Model Assumptions. Journal of the American Statistical Association, 101(473), 341. <https://doi.org/10.1198/016214505000000637>
+
+Pena, E. A., & Slate, E. H. (2019). gvlma: Global Validation of Linear Models Assumptions. <https://CRAN.R-project.org/package=gvlma>
+
+-   global stat:
+
+    -   Are the relationships between your X predictors and Y roughly linear?
+    -   Rejection of the null (p \< .05) indicates a non-linear relationship between one or more of your X's and Y
+
+-   skewness:
+
+    -   Is your distribution skewed positively or negatively, necessitating a transformation to meet the assumption of normality?
+    -   Rejection of the null (p \< .05) indicates that you should likely transform your data.
+
+-   kurtosis:
+
+    -   Is your distribution kurtotic (highly peaked or very shallowly peaked), necessitating a transformation to meet the assumption of normality?
+    -   Rejection of the null (p \< .05) indicates that you should likely transform your data. measuring the distribution, outliers, influential data, etc
+
+-   link function:
+
+    -   Is your dependent variable truly continuous, or categorical?
+    -   Rejection of the null (p \< .05) indicates that you should use an alternative form of the generalized linear model (e.g. logistic or binomial regression)
+
+-   heteroscedasticity:
+
+    -   Is the variance of your model residuals constant across the range of X (assumption of homoscedastiity)?
+    -   Rejection of the null (p \< .05) indicates that your residuals are heteroscedastic, and thus non-constant across the range of X
+    -   Your model is better/worse at predicting for certain ranges of your X scales looking for equal variance in the residuals
+
+```{r}
+library(gvlma)
+myLModel <- lm(t50mFree ~ ULAveDist+LMAveDist+freeSwimIndex50m+wingSpan+age+freeTurnTime5.10m_50m+height+weight,data = df)
+summary(myLModel)
+gvlma(myLModel,alphalevel = 0.05)
+
+plot(myLModel)
+```
+
+Eliminar uns outliers subject 5,32,65
+
+```{r}
+df<-df[-c(5,32,65), ]
+```
+
+```{r}
+myLModel <- lm(t50mFree ~ ULAveDist+LMAveDist+freeSwimIndex50m+wingSpan+age+freeTurnTime5.10m_50m+height+weight,data = df)
+myLModel
+gvlma(myLModel,alphalevel = 0.05)
+
+plot(myLModel)
+```
+
+## Model summary
+
+```{r}
+summary(myLModel)
+
+```
+Intercept = expected t50mfree considering the average of all swimmers in the variables used
+
+Slopes: 
+- LMAveDist: para cada unidade a menos na LMAveDist o t50mFree reduz -0.908 
+- freeSwimIndex50m: para cada unidade a menos na freeSwimIndex50m o t50mFree reduz -0.55 
+- freeTurnTime5.10m_50m: para unidade a mais freeTurnTime5.10m_50m o t50mFree aumenta 2.29
+
+Estes coeficientes não indicam a importância relativa de cada preditor para estimar a VD
+
+-   residuals:
+
+    -   difference between the actual observed response values and the response values that the model predicted
+    -   symmetrical distribution across these points on the mean value zero (0)
+
+-   coefficientes:
+
+    -   simple linear regression, the coefficients are two unknown constants that represent the intercept and slope terms in the linear model
+    -   find an intercept and a slope such that the resulting fitted line is as close as possible to the data points in our data set
+
+-   t value:
+
+    -   how many standard deviations our coefficient estimate is far away from 0
+    -   We want it to be far away from zero as this would indicate we could reject the null hypothesis
+    -   t-statistic values are relatively far away from zero and are large relative to the standard error, which could indicate a relationship exists. In general, t-values are also used to compute p-values.
+
+-   Pr(\>t):
+
+    -   The Pr(\>t) acronym found in the model output relates to the probability of observing any value equal or larger than t
+    -   A small p-value indicates that it is unlikely we will observe a relationship between the predictor and response variables due to chance.
+    -   Typically, a p-value of 5% or less is a good cut-off point
+    -   In our model example, the p-values are very close to zero. Note the 'signif. Codes' associated to each estimate.
+    -   Three stars (or asterisks) represent a highly significant p-value. Consequently, a small p-value for the intercept and the slope indicates that we can reject the null hypothesis.
+
+-   residual std error:
+
+    -   measure of the quality of a linear regression fit
+    -   The Residual Standard Error is the average amount that the response (dist) will deviate from the true regression line
+    -   The Residual Standard Error was calculated with 164 degrees of freedom
+    -   degrees of freedom are the number of data points that went into the estimation of the parameters used after taking into account these parameters (restriction). In our case, we had 184 data points and 9 parameters
+
+-   r-squared:
+
+    -   R = coeficiente de correlação. Valores estimados vs valores observados (racio = VE/VO)
+    -   R Square = O quanto é que a variável dependente é explicada pelas variáveis utilizadas, mede a proporção da variação da variável dependente (t50mFree) que é explicada pelas variáveis independentes no modelo.
+    -   measure of how well the model is fitting the actual data
+    -   is a measure of the linear relationship between our predictor variable (speed) and our response / target variable (dist)
+    -   It always lies between 0 and 1 (i.e.: a number near 0 represents a regression that does not explain the variance in the response variable well and a number close to 1 does explain the observed variance in the response variable)
+    -   In our example, the R2 we get is 0.6510794. Or roughly 65% of the variance found in the response variable can be explained by the predictor variable
+    -   A side note: In multiple regression settings, the R2 will always increase as more variables are included in the model.
+
+-   adjusted r-squared:
+
+    -   Adjusted R Square = medida a reportar para avaliação da qualidade do modelo, está corrigida para o número de variáveis independentes e n da amostra
+    -   is the preferred measure as it adjusts for the number of variables considered.
+    -   In multiple regression settings, the R2 will always increase as more variables are included in the model.
+
+- f-statistics:
+
+    - F-statistic is a good indicator of whether there is a relationship between our predictor and the response variables
+    - The further the F-statistic is from 1 the better it is
+    - Generally, when the number of data points is large, an F-statistic that is only a little bit larger than 1 is already sufficient to reject the null hypothesis (H0 : There is no relationship)
+
+## Partial Plots
+
+```{r}
+library(pdp)
+vars=c("ULAveDist","LMAveDist","freeSwimIndex50m","wingSpan","age","freeTurnTime5.10m_50m","height","weight")
+for (var in vars){
+  print(partial(myLModel,pred.var = var,plot = TRUE))
+}
+
+#partial(myLModel,pred.var = c("age"),plot = TRUE)
+```
+
+## Best Model - Stepwise regression
+
+Vamos que é o melhor modelo para prevermos o tempo nos 50 metros livres (t50mFree) testando todas as variáveis que temos disponíveis.
+
+Vamos utilizar o modelo stepwise adicionando e removendo iterativamente variáveis preditoras (predictors) no modelo para identificar um subconjunto de variáveis que tem a melhor desempenho a prever o model, que é o modelo que tem um erro menor na previsão.
+
+Existem três estratégias (James et al. 2014;P. Bruce and Bruce 2017):
+
+-   Forward selection: inicia sem preditores no modelo e iterativamente adiciona o que mais contribui para a previsão parando quando não existem melhorias estatisticamente significativas;
+
+-   Backward selection (or backward elimination): começa com todos os preditores no modelo (*full model*), iterativamente remove os que menos contribuem para a previsão. Para quando todos os preditores são significativos;
+
+-   Stepwise selection: combinação de forward e backward selections. Quando se começa sem variáveis preditoras e sequencialmente são adicionados os preditores que mais contribuem como a estratégia Forward selection. Depois de adicionar cada variável, são removidas as variáveis que não melhoram o modelo utilizando a aproximação backward selection;
+
+Bruce, P., & Bruce, A. (2017). *Practical Statistics for Data Scientists: 50 Essential Concepts* (1st edition). O'Reilly Media.
+
+James, G., Witten, D., Hastie, T., & Tibshirani, R. (2013). *An Introduction to Statistical Learning: With Applications in R* (1st ed. 2013, Corr. 7th printing 2017 edition). Springer.
+
+```{r message=FALSE, warning=FALSE, include=TRUE}
+library(MASS)
+
+# Vamos tirar NANs
+df_semNANs<-na.omit(df)
+
+# Fit do modelo com todas 
+dfTodas <- lm(t50mFree ~., data = df_semNANs)
+# Stepwise regression model
+stepModel <- stepAIC(dfTodas, direction = "both",  trace = FALSE,)
+summary(stepModel)
+```
+
+## Qual é o melhor modelo considerando todas as variáveis disponíveis para prever t50mFree?
+
+```{r message=FALSE, warning=FALSE, include=TRUE}
+library(caret)
+library(leaps)
+
+models <- regsubsets(t50mFree~., data = df_semNANs, nvmax = 10, method = "seqrep")
+summary(models)
+
+```
+
+```{r}
+# Set seed for reproducibility
+set.seed(123)
+# Set up repeated k-fold cross-validation
+train.control <- trainControl(method = "cv", number = 10)
+# Train the model
+stepModel <- train(t50mFree ~., data = df_semNANs,method = "leapBackward", 
+                    tuneGrid = data.frame(nvmax = 1:5),
+                    trControl = train.control
+                    )
+stepModel$results
+```
+
+Quantas variáveis tem o melhor modelo? O que têm o RMSE e o MAE é o utilizado normalmente. R\^2 indica a correlação entre as preditoras e a predicted (resultado), quanto mais alto melhor.
+
+```{r}
+stepModel$bestTune
+```
+
+## Summary do melhor modelo
+
+```{r}
+summary(stepModel$finalModel)
+```
+
+O melhor modelo contêm as variáveis t50mFree5.20m,freeStrokeLength50m, freeSwimIndex50m, freeTurnIndex50m e LMAveDist
+
+```{r}
+myLModel <- lm(t50mFree ~ t50mFree5.20m+freeStrokeLength50m+freeSwimIndex50m+freeTurnIndex50m +LMAveDist,data = df)
+summary(myLModel)
+```
